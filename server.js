@@ -14,25 +14,76 @@ const server = express()
 const io = socketIO(server);
 
 io.on('connection', socket => {
-  socket.join('lobby', () => {});
+  console.log('user connected');
+  socket.join('lobby', () => {
+    socket.emit('joinedRoom', 'lobby');
+    io.to('lobby').emit('emitRooms', roomList());
+  });
 
   socket.on('register', id => {
     socket.bungieId = id;
+    socket.emit('registered', id);
   });
 
   socket.on('joinRoom', room => {
-    socket.join(room, () => {
-      socket.leave('lobby');
+    socket.leave('lobby', () => {
+      socket.join(room, () => {
+        socket.emit('joinedRoom', room);
+        io.to('lobby').emit('emitRooms', roomList());
+        io.to(room).emit('emitUsers', userList(room));
+      });
     });
   });
 
   socket.on('leaveRoom', room => {
     socket.leave(room, () => {
-      socket.join('lobby');
+      io.to(room).emit('emitUsers', userList(room));
+      socket.join('lobby', () => {
+        socket.emit('joinedRoom', 'lobby');
+        io.to('lobby').emit('emitRooms', roomList());
+      });
     });
   });
 
-  socket.on('disconnect', () => {});
+  socket.on('disconnect', () => {
+    io.to('lobby').emit('emitRooms', roomList());
+    console.log('user disconnected');
+  });
 });
+
+function roomList() {
+  const roomList = [];
+
+  Object.keys(io.sockets.adapter.rooms).forEach(roomID => {
+    const room = io.sockets.adapter.rooms[roomID];
+    if (roomID !== 'lobby') {
+      if (room.length > 1) {
+        roomList.push(roomID);
+      } else if (room.length === 1) {
+        let match = false;
+        Object.keys(room.sockets).some(socketID => {
+          if (socketID === roomID) {
+            return (match = true);
+          }
+        });
+        if (!match) {
+          roomList.push(roomID);
+        }
+      }
+    }
+  });
+  return roomList;
+}
+
+function userList(roomID) {
+  const userList = [];
+  const room = io.sockets.adapter.rooms[roomID];
+  try {
+    Object.keys(room.sockets).forEach(socketID => {
+      userList.push(io.nsps['/'].connected[socketID].bungieId);
+    });
+  } catch (e) {}
+  return userList;
+}
 
 setInterval(() => io.emit('time', new Date().toTimeString()), 1000);
