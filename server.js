@@ -15,14 +15,17 @@ const io = socketIO(server);
 
 io.on('connection', socket => {
   console.log('user connected');
-  socket.join('lobby', () => {
-    socket.emit('joinedRoom', 'lobby');
-    io.to('lobby').emit('emitRooms', roomList());
-  });
 
-  socket.on('register', id => {
-    socket.bungieId = id;
-    socket.emit('registered', id);
+  socket.on('register', ({
+    membershipType,
+    destinyMembershipId
+  }) => {
+    socket.membershipType = membershipType;
+    socket.destinyMembershipId = destinyMembershipId;
+    socket.emit('registered', {
+      registeredType: socket.membershipType,
+      registeredId: socket.destinyMembershipId
+    });
   });
 
   socket.on('joinRoom', room => {
@@ -52,7 +55,9 @@ io.on('connection', socket => {
 });
 
 function roomList() {
-  const roomList = [];
+  const roomList = [
+    '4611686018430450544'
+  ];
 
   Object.keys(io.sockets.adapter.rooms).forEach(roomID => {
     const room = io.sockets.adapter.rooms[roomID];
@@ -76,13 +81,61 @@ function roomList() {
 }
 
 function userList(roomID) {
-  const userList = [];
+  const userList = [{
+      membershipType: '1',
+      destinyMembershipId: '4611686018430450544'
+    },
+    {
+      membershipType: '1',
+      destinyMembershipId: '4611686018434619267'
+    },
+    {
+      membershipType: '1',
+      destinyMembershipId: '4611686018438442802'
+    },
+    {
+      membershipType: '1',
+      destinyMembershipId: '4611686018429542374'
+    },
+    {
+      membershipType: '1',
+      destinyMembershipId: '4611686018433857896'
+    },
+    {
+      membershipType: '1',
+      destinyMembershipId: '4611686018430209229'
+    },
+    {
+      membershipType: '1',
+      destinyMembershipId: '4611686018438413570'
+    },
+    {
+      membershipType: '1',
+      destinyMembershipId: '4611686018431417070'
+    },
+    {
+      membershipType: '1',
+      destinyMembershipId: '4611686018433707437'
+    },
+    {
+      membershipType: '1',
+      destinyMembershipId: '4611686018459691107'
+    },
+    {
+      membershipType: '1',
+      destinyMembershipId: '4611686018443852891'
+    },
+  ];
   const room = io.sockets.adapter.rooms[roomID];
   try {
     Object.keys(room.sockets).forEach(socketID => {
-      userList.push(io.nsps['/'].connected[socketID].bungieId);
+      userList.push({
+        membershipType: io.nsps['/'].connected[socketID].membershipType,
+        destinyMembershipId: io.nsps['/'].connected[socketID].destinyMembershipId
+      });
     });
   } catch (e) {}
+  console.log(userList)
   return userList;
 }
 
